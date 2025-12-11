@@ -1,0 +1,266 @@
+# S3 Client
+
+Переиспользуемый клиент для работы с S3 объектным хранилищем, включающий FastAPI роуты и lifecycle управление.
+
+## Структура проекта
+
+```
+s3/
+├── client/              # Клиент для работы с S3
+│   ├── client.py       # Основные методы работы с объектами
+│   └── connection.py    # Создание соединения
+├── entities.py          # Модели данных для API запросов
+├── routes.py            # FastAPI роуты
+├── lifespan.py          # Управление жизненным циклом приложения
+├── pyproject.toml       # Конфигурация проекта и зависимости
+└── tests/              # Тесты
+    ├── test_routes.py   # Интеграционные тесты
+    └── conftest.py      # Общие фикстуры для тестов
+```
+
+## Требования
+
+- Python 3.11+
+- [uv](https://github.com/astral-sh/uv) - быстрый менеджер пакетов Python
+- Docker и Docker Compose (для запуска тестового приложения)
+- S3-совместимое хранилище (AWS S3, MinIO и т.д.)
+
+### Установка uv
+
+```bash
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Linux/macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+## Запуск проекта
+
+### Использование Docker Compose
+
+Проект включает docker-compose конфигурацию для запуска тестового приложения с MinIO:
+
+```bash
+docker-compose up --build
+```
+
+После запуска:
+- MinIO доступен на `localhost:9000`
+- API приложение доступно на `http://localhost:8000`
+- Документация API: `http://localhost:8000/docs`
+
+### Локальный запуск
+
+1. Установите зависимости:
+
+```bash
+# Установить все зависимости (включая тестовые)
+uv sync --extra test
+
+# Или только основные зависимости
+uv sync
+```
+
+2. Настройте переменные окружения:
+
+```bash
+# Windows (cmd)
+set AWS_ACCESS_KEY_ID=your_access_key
+set AWS_SECRET_ACCESS_KEY=your_secret_key
+set AWS_REGION=us-east-1
+set S3_ENDPOINT_URL=http://localhost:9000  # для MinIO
+
+# Linux/macOS
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+export AWS_REGION=us-east-1
+export S3_ENDPOINT_URL=http://localhost:9000  # для MinIO
+```
+
+3. Запустите приложение:
+
+```bash
+# Используя uv
+uv run uvicorn test_app.main:app --host 0.0.0.0 --port 8000
+```
+
+## Запуск тестов
+
+Перед запуском тестов убедитесь, что установлены все зависимости:
+
+```bash
+uv sync --extra test
+```
+
+### Интеграционные тесты
+
+Все тесты являются интеграционными и требуют запущенный S3-совместимый сервер (например, MinIO).
+
+```bash
+# Запустите MinIO (например, через docker-compose)
+docker-compose up minio -d
+
+# Настройте переменные окружения
+# Windows (cmd)
+set AWS_ACCESS_KEY_ID=minioadmin
+set AWS_SECRET_ACCESS_KEY=minioadmin
+set S3_ENDPOINT_URL=http://localhost:9000
+
+# Linux/macOS
+export AWS_ACCESS_KEY_ID=minioadmin
+export AWS_SECRET_ACCESS_KEY=minioadmin
+export S3_ENDPOINT_URL=http://localhost:9000
+
+# Запустите все интеграционные тесты
+uv run pytest tests/ -m integration -v
+```
+
+## Использование в проекте
+
+### Импорт модуля
+
+```python
+from s3.client import S3Client, create_s3_client
+from s3.routes import router
+from s3.lifespan import s3_lifespan
+```
+
+### Настройка FastAPI приложения
+
+```python
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from s3.lifespan import s3_lifespan
+from s3.routes import router
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with s3_lifespan(
+        app=app,
+        aws_access_key_id="your_key",
+        aws_secret_access_key="your_secret",
+        region_name="us-east-1",
+        endpoint_url="http://localhost:9000",  # для MinIO
+    ):
+        yield
+
+app = FastAPI(lifespan=lifespan)
+app.include_router(router)
+```
+
+## API эндпоинты
+
+### Общие
+
+- `GET /s3/ping` - проверка доступности S3
+- `GET /s3/buckets` - список всех bucket'ов
+- `POST /s3/buckets/exists` - проверка существования bucket'а
+- `POST /s3/buckets/create` - создание bucket'а
+- `POST /s3/buckets/delete` - удаление bucket'а
+
+### Объекты
+
+- `POST /s3/objects/upload` - загрузка объекта в S3
+- `POST /s3/objects/download` - скачивание объекта из S3
+- `POST /s3/objects/delete` - удаление объекта
+- `POST /s3/objects/exists` - проверка существования объекта
+- `POST /s3/objects/list` - список объектов в bucket'е
+- `POST /s3/objects/metadata` - получение метаданных объекта
+- `POST /s3/objects/copy` - копирование объекта
+- `POST /s3/objects/presigned-url` - генерация presigned URL
+
+Полная документация доступна по адресу `/docs` при запущенном приложении.
+
+## Методы клиента
+
+### Операции с bucket'ами
+
+- `list_buckets()` - список всех bucket'ов
+- `bucket_exists()` - проверка существования bucket'а
+- `create_bucket()` - создание bucket'а
+- `delete_bucket()` - удаление bucket'а
+
+### Операции с объектами
+
+- `upload_object()` - загрузка объекта
+- `download_object()` - скачивание объекта
+- `delete_object()` - удаление объекта
+- `object_exists()` - проверка существования
+- `list_objects()` - список объектов
+- `get_object_metadata()` - получение метаданных
+- `copy_object()` - копирование объекта
+- `generate_presigned_url()` - генерация presigned URL
+
+### Примеры использования
+
+```python
+from s3.client import S3Client, create_s3_client
+
+# Создание сессии
+session = create_s3_client(
+    aws_access_key_id="your_key",
+    aws_secret_access_key="your_secret",
+    endpoint_url="http://localhost:9000",  # для MinIO
+)
+client = S3Client(session, endpoint_url="http://localhost:9000")
+
+# Загрузка объекта
+await client.upload_object(
+    bucket_name="my-bucket",
+    object_key="path/to/file.txt",
+    data=b"file content",
+    content_type="text/plain",
+)
+
+# Скачивание объекта
+data = await client.download_object("my-bucket", "path/to/file.txt")
+
+# Список объектов
+objects = await client.list_objects("my-bucket", prefix="path/")
+
+# Удаление объекта
+await client.delete_object("my-bucket", "path/to/file.txt")
+```
+
+## Управление зависимостями
+
+Проект использует [uv](https://github.com/astral-sh/uv) для управления зависимостями.
+
+### Основные команды
+
+```bash
+# Установить все зависимости
+uv sync
+
+# Установить зависимости с тестовыми пакетами
+uv sync --extra test
+
+# Добавить новую зависимость
+uv add package-name
+
+# Добавить dev-зависимость (в optional-dependencies)
+uv add --optional test package-name
+
+# Удалить зависимость
+uv remove package-name
+
+# Обновить все зависимости
+uv sync --upgrade
+
+# Запустить команду в uv окружении
+uv run python script.py
+uv run pytest
+uv run uvicorn test_app.main:app
+```
+
+### Структура зависимостей
+
+- Основные зависимости указаны в `[project.dependencies]` в `pyproject.toml`
+- Тестовые зависимости указаны в `[project.optional-dependencies.test]`
+- Версии всех зависимостей зафиксированы в `uv.lock`
+
+## Лицензия
+
+Проект предназначен для внутреннего использования.
+

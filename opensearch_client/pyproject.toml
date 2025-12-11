@@ -1,0 +1,39 @@
+[project]
+name = "opensearch-client"
+version = "1.0.0"
+description = "Переиспользуемый клиент для работы с OpenSearch"
+requires-python = ">=3.11"
+dependencies = [
+    "opensearch-py==2.4.0",
+    "fastapi==0.104.1",
+    "uvicorn[standard]==0.24.0",
+    "pydantic==2.5.0",
+    "pydantic-settings==2.1.0",
+    "aiohttp>=3.8.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest==7.4.3",
+    "pytest-asyncio==0.21.1",
+    "httpx==0.25.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+force-include = { "__init__.py" = "opensearch_client/__init__.py", "client" = "opensearch_client/client", "entities.py" = "opensearch_client/entities.py", "lifespan.py" = "opensearch_client/lifespan.py", "routes.py" = "opensearch_client/routes.py", "base_settings.py" = "opensearch_client/base_settings.py" }
+
+[tool.uv.sources]
+# Локальные источники пакетов (если нужно)
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: Unit tests with mocks (fast, no OpenSearch required)",
+    "integration: Integration tests with real OpenSearch (require running server)",
+]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
