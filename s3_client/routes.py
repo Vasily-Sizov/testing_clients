@@ -1,11 +1,10 @@
 from typing import Any
 from fastapi import APIRouter, Request, HTTPException, Depends, Response
-from fastapi.responses import StreamingResponse
 import base64
 
-from client.client import S3Client
-from lifespan import s3_lifespan
-from entities import (
+from s3_client.client.client import S3Client
+from s3_client.lifespan import s3_lifespan
+from s3_client.entities import (
     UploadObjectRequest,
     DownloadObjectRequest,
     DeleteObjectRequest,
@@ -61,7 +60,7 @@ async def list_buckets(
 async def bucket_exists(
     bucket_name: str,
     client: S3Client = Depends(get_s3_client),
-) -> dict[str, bool]:
+) -> dict[str, Any]:
     """Проверяет существование bucket'а."""
     exists = await client.bucket_exists(bucket_name)
     return {"bucket_name": bucket_name, "exists": exists}
@@ -158,7 +157,7 @@ async def delete_object(
 async def object_exists(
     request: ObjectExistsRequest,
     client: S3Client = Depends(get_s3_client),
-) -> dict[str, bool]:
+) -> dict[str, Any]:
     """Проверяет существование объекта."""
     exists = await client.object_exists(
         bucket_name=request.bucket_name,

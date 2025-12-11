@@ -5,7 +5,7 @@ import os
 import pytest
 from aioboto3 import Session
 
-from s3.client import S3Client, create_s3_client
+from s3_client.client import S3Client, create_s3_client
 
 
 @pytest.fixture(scope="module")
@@ -24,16 +24,29 @@ def s3_session() -> Session:
     """
     Создаёт сессию S3 для тестов.
 
-    Использует переменные окружения:
-    - AWS_ACCESS_KEY_ID
-    - AWS_SECRET_ACCESS_KEY
-    - AWS_REGION (по умолчанию us-east-1)
-    - S3_ENDPOINT_URL (опционально, для совместимых хранилищ)
+    Использует переменные окружения (если установлены), иначе значения по умолчанию для MinIO:
+    - AWS_ACCESS_KEY_ID (по умолчанию: minioadmin)
+    - AWS_SECRET_ACCESS_KEY (по умолчанию: minioadmin)
+    - AWS_REGION (по умолчанию: us-east-1)
+    - AWS_ENDPOINT_URL (по умолчанию: http://localhost:9000 для MinIO)
     """
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID", "test")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY", "test")
-    region_name = os.getenv("AWS_REGION", "us-east-1")
-    endpoint_url = os.getenv("S3_ENDPOINT_URL", None)
+    # Значения по умолчанию для локального MinIO
+    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID") or "minioadmin"
+    if aws_access_key_id:
+        aws_access_key_id = aws_access_key_id.strip()
+    
+    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY") or "minioadmin"
+    if aws_secret_access_key:
+        aws_secret_access_key = aws_secret_access_key.strip()
+    
+    region_name = os.getenv("AWS_REGION") or "us-east-1"
+    if region_name:
+        region_name = region_name.strip()
+    
+    # По умолчанию используем локальный MinIO
+    endpoint_url = os.getenv("AWS_ENDPOINT_URL") or "http://localhost:9000"
+    if endpoint_url:
+        endpoint_url = endpoint_url.strip()
 
     session = create_s3_client(
         aws_access_key_id=aws_access_key_id,
@@ -50,9 +63,17 @@ def client(s3_session: Session) -> S3Client:
     """
     Создаёт S3Client для тестов клиента напрямую.
     """
-    endpoint_url = os.getenv("S3_ENDPOINT_URL", None)
-    use_ssl = os.getenv("S3_USE_SSL", "true").lower() == "true"
-    verify = os.getenv("S3_VERIFY", "true").lower() == "true"
+    # По умолчанию для MinIO используем http (без SSL)
+    endpoint_url = os.getenv("AWS_ENDPOINT_URL") or "http://localhost:9000"
+    if endpoint_url:
+        endpoint_url = endpoint_url.strip()
+    
+    # По умолчанию для MinIO: use_ssl=false, verify=false
+    use_ssl_str = os.getenv("AWS_USE_SSL", "false")
+    use_ssl = use_ssl_str.strip().lower() == "true" if use_ssl_str else False
+    
+    verify_str = os.getenv("AWS_VERIFY", "false")
+    verify = verify_str.strip().lower() == "true" if verify_str else False
     return S3Client(
         session=s3_session,
         endpoint_url=endpoint_url,
@@ -66,9 +87,17 @@ def integration_client(s3_session: Session) -> S3Client:
     """
     Создаёт S3Client для интеграционных тестов API.
     """
-    endpoint_url = os.getenv("S3_ENDPOINT_URL", None)
-    use_ssl = os.getenv("S3_USE_SSL", "true").lower() == "true"
-    verify = os.getenv("S3_VERIFY", "true").lower() == "true"
+    # По умолчанию для MinIO используем http (без SSL)
+    endpoint_url = os.getenv("AWS_ENDPOINT_URL") or "http://localhost:9000"
+    if endpoint_url:
+        endpoint_url = endpoint_url.strip()
+    
+    # По умолчанию для MinIO: use_ssl=false, verify=false
+    use_ssl_str = os.getenv("AWS_USE_SSL", "false")
+    use_ssl = use_ssl_str.strip().lower() == "true" if use_ssl_str else False
+    
+    verify_str = os.getenv("AWS_VERIFY", "false")
+    verify = verify_str.strip().lower() == "true" if verify_str else False
     return S3Client(
         session=s3_session,
         endpoint_url=endpoint_url,
@@ -83,16 +112,24 @@ def integration_app(s3_session: Session):
     Создаёт FastAPI приложение для интеграционных тестов API.
     """
     from fastapi import FastAPI
-    from s3.routes import router
-    from s3.client import S3Client
+    from s3_client.routes import router
+    from s3_client.client import S3Client
 
     app = FastAPI()
     app.include_router(router)
 
     # Инициализируем клиент напрямую
-    endpoint_url = os.getenv("S3_ENDPOINT_URL", None)
-    use_ssl = os.getenv("S3_USE_SSL", "true").lower() == "true"
-    verify = os.getenv("S3_VERIFY", "true").lower() == "true"
+    # По умолчанию для MinIO используем http (без SSL)
+    endpoint_url = os.getenv("AWS_ENDPOINT_URL") or "http://localhost:9000"
+    if endpoint_url:
+        endpoint_url = endpoint_url.strip()
+    
+    # По умолчанию для MinIO: use_ssl=false, verify=false
+    use_ssl_str = os.getenv("AWS_USE_SSL", "false")
+    use_ssl = use_ssl_str.strip().lower() == "true" if use_ssl_str else False
+    
+    verify_str = os.getenv("AWS_VERIFY", "false")
+    verify = verify_str.strip().lower() == "true" if verify_str else False
     client = S3Client(
         session=s3_session,
         endpoint_url=endpoint_url,

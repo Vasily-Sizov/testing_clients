@@ -69,13 +69,17 @@ uv sync
 set AWS_ACCESS_KEY_ID=your_access_key
 set AWS_SECRET_ACCESS_KEY=your_secret_key
 set AWS_REGION=us-east-1
-set S3_ENDPOINT_URL=http://localhost:9000  # для MinIO
+set AWS_ENDPOINT_URL=http://localhost:9000  # для MinIO
+set AWS_USE_SSL=false
+set AWS_VERIFY=false
 
 # Linux/macOS
 export AWS_ACCESS_KEY_ID=your_access_key
 export AWS_SECRET_ACCESS_KEY=your_secret_key
 export AWS_REGION=us-east-1
-export S3_ENDPOINT_URL=http://localhost:9000  # для MinIO
+export AWS_ENDPOINT_URL=http://localhost:9000  # для MinIO
+export AWS_USE_SSL=false
+export AWS_VERIFY=false
 ```
 
 3. Запустите приложение:
@@ -100,21 +104,58 @@ uv sync --extra test
 ```bash
 # Запустите MinIO (например, через docker-compose)
 docker-compose up minio -d
+```
 
-# Настройте переменные окружения
-# Windows (cmd)
+#### Запуск тестов (рекомендуемый способ)
+
+Тесты имеют значения по умолчанию для локального MinIO, поэтому можно запускать их без установки переменных окружения:
+
+```bash
+# Просто запустите тесты - значения по умолчанию:
+# - AWS_ACCESS_KEY_ID=minioadmin
+# - AWS_SECRET_ACCESS_KEY=minioadmin
+# - AWS_REGION=us-east-1
+# - AWS_ENDPOINT_URL=http://localhost:9000
+# - AWS_USE_SSL=false
+# - AWS_VERIFY=false
+
+# Работает в Windows CMD, bash (Linux/macOS/Git Bash) и других оболочках:
+uv run pytest tests/ -m integration -v
+
+# Или с дополнительными опциями:
+uv run pytest tests/ -m integration -v --tb=line -x
+```
+
+**Примечание:** В bash команда `uv run pytest tests/ -m integration -v` работает напрямую без установки переменных окружения, так как тесты используют значения по умолчанию для MinIO.
+
+#### Запуск тестов с переопределением переменных окружения
+
+Если нужно использовать другие настройки, можно установить переменные окружения:
+
+**Windows (cmd):**
+```bash
 set AWS_ACCESS_KEY_ID=minioadmin
 set AWS_SECRET_ACCESS_KEY=minioadmin
-set S3_ENDPOINT_URL=http://localhost:9000
-
-# Linux/macOS
-export AWS_ACCESS_KEY_ID=minioadmin
-export AWS_SECRET_ACCESS_KEY=minioadmin
-export S3_ENDPOINT_URL=http://localhost:9000
-
-# Запустите все интеграционные тесты
+set AWS_REGION=us-east-1
+set AWS_ENDPOINT_URL=http://localhost:9000
+set AWS_USE_SSL=false
+set AWS_VERIFY=false
 uv run pytest tests/ -m integration -v
 ```
+
+**Linux/macOS или Git Bash:**
+
+Вариант 1: Использовать скрипт (рекомендуется для bash):
+```bash
+bash run_tests.sh
+```
+
+Вариант 2: Установить переменные и запустить в одной команде:
+```bash
+AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin AWS_REGION=us-east-1 AWS_ENDPOINT_URL=http://localhost:9000 AWS_USE_SSL=false AWS_VERIFY=false uv run pytest tests/ -m integration -v
+```
+
+**Важно для bash:** При использовании `export` и `&&` в одной строке переменные окружения могут не передаваться в процесс, запущенный через `uv run`. Используйте скрипт `run_tests.sh` или устанавливайте переменные в одной команде (как в варианте 2).
 
 ## Использование в проекте
 

@@ -6,11 +6,15 @@
 1. Работу клиента S3Client напрямую
 2. Работу API роутов через HTTP
 """
+import os
 import base64
+import tempfile
 import pytest
+from pathlib import Path
 from httpx import AsyncClient
 
-from s3.client import S3Client
+from s3_client.client import S3Client
+from s3_client.client.utils import sync_dir
 
 
 # ============================================================================
@@ -289,7 +293,7 @@ class TestListObjects:
             "/s3/objects/list",
             json={
                 "bucket_name": test_bucket,
-                "prefix": "",
+                "prefix": "test-file-",
                 "max_keys": 100,
             },
         )
@@ -298,6 +302,10 @@ class TestListObjects:
         result = response.json()
         assert result["bucket_name"] == test_bucket
         assert len(result["objects"]) == 3
+        # Проверяем, что все созданные объекты присутствуют
+        object_keys = [obj["key"] for obj in result["objects"]]
+        for i in range(3):
+            assert f"test-file-{i}.txt" in object_keys
 
 
 @pytest.mark.integration
@@ -419,12 +427,13 @@ class TestClientObjectOperations:
                 data=f"content {i}".encode(),
             )
 
-        objects = await client.list_objects(test_bucket)
-        assert len(objects) == 3
-
-        # Проверяем префикс
+        # Проверяем префикс - должны быть только наши объекты
         objects_with_prefix = await client.list_objects(test_bucket, prefix="test-")
-        assert len(objects_with_prefix) == 3
+        assert len(objects_with_prefix) >= 3
+        # Проверяем, что все созданные объекты присутствуют
+        object_keys = [obj["key"] for obj in objects_with_prefix]
+        for i in range(3):
+            assert f"test-{i}.txt" in object_keys
 
     async def test_delete_object(
         self,
@@ -495,4 +504,405 @@ class TestClientObjectOperations:
         # Проверяем содержимое
         copied_data = await client.download_object(test_bucket, "dest.txt")
         assert copied_data == test_data
+
+
+# ============================================================================
+# Тесты для новых методов S3Client
+# ============================================================================
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestGetStream:
+    """Тесты для метода get_stream()."""
+
+    async def test_get_stream_success(
+        self,
+        client: S3Client,
+        test_bucket: str,
+    ) -> None:
+        """Тест успешного получения потока для чтения."""
+        # Загружаем тестовый объект
+        test_data = b"test stream content" * 100  # Делаем побольше для теста
+        await client.upload_object(
+            bucket_name=test_bucket,
+            object_key="stream-test.txt",
+            data=test_data,
+        )
+
+        # Получаем поток
+        stream = await client.get_stream(test_bucket, "stream-test.txt")
+
+        # Читаем данные по частям
+        chunks = []
+        while True:
+            chunk = await stream.read(1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+
+        # Проверяем, что данные совпадают
+        read_data = b"".join(chunks)
+        assert read_data == test_data
+
+    async def test_get_stream_not_found(
+        self,
+        client: S3Client,
+        test_bucket: str,
+    ) -> None:
+        """Тест получения потока для несуществующего объекта."""
+        with pytest.raises(Exception):
+            await client.get_stream(test_bucket, "non-existent.txt")
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestDownloadObjectToFile:
+    """Тесты для метода download_object_to_file()."""
+
+    async def test_download_to_file_success(
+        self,
+        client: S3Client,
+        test_bucket: str,
+    ) -> None:
+        """Тест успешного скачивания объекта в файл."""
+        # Загружаем тестовый объект
+        test_data = b"test file content for download"
+        await client.upload_object(
+            bucket_name=test_bucket,
+            object_key="download-file-test.txt",
+            data=test_data,
+        )
+
+        # Скачиваем в временный файл
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "downloaded.txt")
+
+            result = await client.download_object_to_file(
+                bucket_name=test_bucket,
+                object_key="download-file-test.txt",
+                file_path=file_path,
+            )
+
+            # Проверяем результат
+            assert result["bucket_name"] == test_bucket
+            assert result["object_key"] == "download-file-test.txt"
+            assert result["file_path"] == file_path
+
+            # Проверяем содержимое файла
+            with open(file_path, "rb") as f:
+                file_data = f.read()
+            assert file_data == test_data
+
+    async def test_download_to_file_with_subdir(
+        self,
+        client: S3Client,
+        test_bucket: str,
+    ) -> None:
+        """Тест скачивания в файл с созданием поддиректории."""
+        test_data = b"test content"
+        await client.upload_object(
+            bucket_name=test_bucket,
+            object_key="subdir-test.txt",
+            data=test_data,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "subdir", "file.txt")
+
+            await client.download_object_to_file(
+                bucket_name=test_bucket,
+                object_key="subdir-test.txt",
+                file_path=file_path,
+            )
+
+            # Проверяем, что файл создан
+            assert os.path.exists(file_path)
+            with open(file_path, "rb") as f:
+                assert f.read() == test_data
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestUploadObjectFromFile:
+    """Тесты для метода upload_object_from_file()."""
+
+    async def test_upload_from_file_success(
+        self,
+        client: S3Client,
+        test_bucket: str,
+    ) -> None:
+        """Тест успешной загрузки файла с локальной файловой системы."""
+        # Создаём временный файл
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmpfile:
+            test_data = b"test upload from file content"
+            tmpfile.write(test_data)
+            tmpfile_path = tmpfile.name
+
+        try:
+            # Загружаем файл в S3
+            result = await client.upload_object_from_file(
+                bucket_name=test_bucket,
+                object_key="upload-from-file-test.txt",
+                file_path=tmpfile_path,
+                content_type="text/plain",
+            )
+
+            # Проверяем результат
+            assert result["bucket_name"] == test_bucket
+            assert result["object_key"] == "upload-from-file-test.txt"
+
+            # Проверяем, что файл загружен
+            exists = await client.object_exists(
+                test_bucket, "upload-from-file-test.txt"
+            )
+            assert exists is True
+
+            # Проверяем содержимое
+            downloaded_data = await client.download_object(
+                test_bucket, "upload-from-file-test.txt"
+            )
+            assert downloaded_data == test_data
+        finally:
+            # Удаляем временный файл
+            os.unlink(tmpfile_path)
+
+    async def test_upload_from_file_with_metadata(
+        self,
+        client: S3Client,
+        test_bucket: str,
+    ) -> None:
+        """Тест загрузки файла с метаданными."""
+        with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
+            tmpfile.write(b"test with metadata")
+            tmpfile_path = tmpfile.name
+
+        try:
+            await client.upload_object_from_file(
+                bucket_name=test_bucket,
+                object_key="metadata-file.txt",
+                file_path=tmpfile_path,
+                metadata={"custom": "value", "test": "data"},
+            )
+
+            # Проверяем метаданные
+            metadata = await client.get_object_metadata(
+                test_bucket, "metadata-file.txt"
+            )
+            assert metadata["metadata"]["custom"] == "value"
+            assert metadata["metadata"]["test"] == "data"
+        finally:
+            os.unlink(tmpfile_path)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestUploadObjectWithFiles:
+    """Тесты для upload_object() с поддержкой файлов."""
+
+    async def test_upload_object_with_file_path(
+        self,
+        client: S3Client,
+        test_bucket: str,
+    ) -> None:
+        """Тест загрузки объекта, передав путь к файлу."""
+        with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
+            test_data = b"test upload with file path"
+            tmpfile.write(test_data)
+            tmpfile_path = tmpfile.name
+
+        try:
+            # Передаём путь к файлу вместо bytes
+            result = await client.upload_object(
+                bucket_name=test_bucket,
+                object_key="file-path-test.txt",
+                data=tmpfile_path,  # Передаём путь как строку
+            )
+
+            assert result["bucket_name"] == test_bucket
+            assert result["object_key"] == "file-path-test.txt"
+
+            # Проверяем содержимое
+            downloaded_data = await client.download_object(
+                test_bucket, "file-path-test.txt"
+            )
+            assert downloaded_data == test_data
+        finally:
+            os.unlink(tmpfile_path)
+
+    async def test_upload_object_with_file_handle(
+        self,
+        client: S3Client,
+        test_bucket: str,
+    ) -> None:
+        """Тест загрузки объекта, передав файловый дескриптор."""
+        with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
+            test_data = b"test upload with file handle"
+            tmpfile.write(test_data)
+            tmpfile_path = tmpfile.name
+
+        try:
+            # Открываем файл и передаём дескриптор
+            with open(tmpfile_path, "rb") as f:
+                result = await client.upload_object(
+                    bucket_name=test_bucket,
+                    object_key="file-handle-test.txt",
+                    data=f,  # Передаём файловый дескриптор
+                )
+
+            assert result["bucket_name"] == test_bucket
+
+            # Проверяем содержимое
+            downloaded_data = await client.download_object(
+                test_bucket, "file-handle-test.txt"
+            )
+            assert downloaded_data == test_data
+        finally:
+            os.unlink(tmpfile_path)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestKeyMethod:
+    """Тесты для метода key()."""
+
+    async def test_key_without_s3_root(
+        self,
+        client: S3Client,
+    ) -> None:
+        """Тест key() без s3_root."""
+        # Клиент создан без s3_root
+        result = client.key("path", "to", "file.txt")
+        assert result == "path/to/file.txt"
+
+        result = client.key("/path/", "/to/", "/file.txt")
+        assert result == "path/to/file.txt"
+
+    async def test_key_with_s3_root(
+        self,
+        s3_session,
+        test_bucket: str,
+    ) -> None:
+        """Тест key() с s3_root."""
+        # Создаём клиент с s3_root
+        client = S3Client(
+            session=s3_session,
+            endpoint_url=os.getenv("AWS_ENDPOINT_URL") or "http://localhost:9000",
+            use_ssl=False,
+            verify=False,
+            s3_root="my-prefix",
+        )
+
+        result = client.key("path", "file.txt")
+        assert result == "my-prefix/path/file.txt"
+
+        result = client.key("/path/", "/file.txt")
+        assert result == "my-prefix/path/file.txt"
+
+    async def test_key_integration(
+        self,
+        s3_session,
+        test_bucket: str,
+    ) -> None:
+        """Интеграционный тест key() с реальной загрузкой."""
+        client = S3Client(
+            session=s3_session,
+            endpoint_url=os.getenv("AWS_ENDPOINT_URL") or "http://localhost:9000",
+            use_ssl=False,
+            verify=False,
+            s3_root="test-prefix",
+        )
+
+        # Используем key() для создания пути
+        object_key = client.key("test", "file.txt")
+        assert object_key == "test-prefix/test/file.txt"
+
+        # Загружаем объект с этим ключом
+        await client.upload_object(
+            bucket_name=test_bucket,
+            object_key=object_key,
+            data=b"test content",
+        )
+
+        # Проверяем, что объект существует по полному пути
+        exists = await client.object_exists(test_bucket, object_key)
+        assert exists is True
+
+        # Проверяем, что объект не существует без префикса
+        exists_without_prefix = await client.object_exists(
+            test_bucket, "test/file.txt"
+        )
+        assert exists_without_prefix is False
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestSyncDir:
+    """Тесты для функции sync_dir()."""
+
+    async def test_sync_dir_success(
+        self,
+        client: S3Client,
+        test_bucket: str,
+    ) -> None:
+        """Тест успешной синхронизации директории."""
+        # Загружаем несколько объектов с префиксом
+        test_files = {
+            "sync-test/file1.txt": b"content 1",
+            "sync-test/file2.txt": b"content 2",
+            "sync-test/subdir/file3.txt": b"content 3",
+        }
+
+        for key, content in test_files.items():
+            await client.upload_object(
+                bucket_name=test_bucket,
+                object_key=key,
+                data=content,
+            )
+
+        # Синхронизируем в временную директорию
+        with tempfile.TemporaryDirectory() as tmpdir:
+            await sync_dir(
+                client=client,
+                bucket_name=test_bucket,
+                s3_prefix="sync-test",
+                local_path=tmpdir,
+            )
+
+            # Проверяем, что все файлы скачаны
+            assert os.path.exists(os.path.join(tmpdir, "file1.txt"))
+            assert os.path.exists(os.path.join(tmpdir, "file2.txt"))
+            assert os.path.exists(os.path.join(tmpdir, "subdir", "file3.txt"))
+
+            # Проверяем содержимое
+            with open(os.path.join(tmpdir, "file1.txt"), "rb") as f:
+                assert f.read() == test_files["sync-test/file1.txt"]
+
+            with open(os.path.join(tmpdir, "subdir", "file3.txt"), "rb") as f:
+                assert f.read() == test_files["sync-test/subdir/file3.txt"]
+
+    async def test_sync_dir_empty_prefix(
+        self,
+        client: S3Client,
+        test_bucket: str,
+    ) -> None:
+        """Тест синхронизации без префикса (все объекты)."""
+        # Загружаем объекты
+        await client.upload_object(
+            bucket_name=test_bucket,
+            object_key="root-file.txt",
+            data=b"root content",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            await sync_dir(
+                client=client,
+                bucket_name=test_bucket,
+                s3_prefix="",  # Без префикса
+                local_path=tmpdir,
+            )
+
+            # Проверяем, что файл скачан (может быть много файлов от других тестов)
+            # Просто проверяем, что директория не пустая
+            files = list(Path(tmpdir).rglob("*"))
+            assert len(files) > 0
 

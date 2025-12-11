@@ -11,35 +11,47 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Настройки подключения к S3."""
 
-    aws_access_key_id: str | None = Field(
+    access_key_id: str | None = Field(
         default=None,
         description="AWS Access Key ID",
+        alias="aws_access_key_id",
     )
-    aws_secret_access_key: str | None = Field(
+    secret_access_key: str | None = Field(
         default=None,
         description="AWS Secret Access Key",
+        alias="aws_secret_access_key",
     )
-    aws_region: str = Field(
+    region: str = Field(
         default="us-east-1",
         description="Регион AWS",
+        alias="aws_region",
     )
-    aws_endpoint_url: str | None = Field(
+    endpoint_url: str | None = Field(
         default=None,
         description="URL эндпоинта (для совместимых с S3 хранилищ)",
+        alias="aws_endpoint_url",
     )
-    aws_use_ssl: bool = Field(
+    use_ssl: bool = Field(
         default=True,
         description="Использовать ли SSL",
+        alias="aws_use_ssl",
     )
-    aws_verify: bool = Field(
+    verify: bool = Field(
         default=True,
         description="Проверять ли SSL сертификаты",
+        alias="aws_verify",
+    )
+    s3_root: str = Field(
+        default="",
+        description="Корневой префикс для путей на S3",
+        alias="aws_s3_root",
     )
 
     model_config = SettingsConfigDict(
         env_prefix="AWS_",
         case_sensitive=False,
         env_file=".env",
+        populate_by_name=True,  # Позволяет использовать и alias и реальные имена
     )
 
 
