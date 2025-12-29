@@ -6,9 +6,9 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from opensearchpy import AsyncOpenSearch
 
-from opensearch_client.client.client import OpenSearchClient
-from opensearch_client.client.connection import create_opensearch_connection
-from opensearch_client.routes import router
+from my_opensearch_client.client.client import OpenSearchClient
+from my_opensearch_client.client.connection import create_opensearch_connection
+from my_opensearch_client.endpoint.routes import opensearch_router
 
 
 # Фикстуры для unit-тестов (с моками)
@@ -23,7 +23,7 @@ def mock_client() -> OpenSearchClient:
 def app(mock_client: OpenSearchClient) -> FastAPI:
     """Создаёт тестовое FastAPI приложение с мок-клиентом."""
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(opensearch_router)
     
     # Сохраняем мок-клиент в state
     app.state.opensearch_client = mock_client
@@ -98,7 +98,7 @@ async def integration_app(integration_client: OpenSearchClient, event_loop) -> F
     asyncio.set_event_loop(event_loop)
     
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(opensearch_router)
     app.state.opensearch_client = integration_client
     return app
 

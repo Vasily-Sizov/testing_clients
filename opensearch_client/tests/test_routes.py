@@ -10,7 +10,7 @@ import pytest
 from httpx import AsyncClient
 from opensearchpy import AsyncOpenSearch
 
-from opensearch_client.client.client import OpenSearchClient
+from my_opensearch_client.client.client import OpenSearchClient
 
 
 @pytest.mark.integration

@@ -3,9 +3,9 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from opensearchpy import AsyncOpenSearch
 
-from opensearch_client.client.client import OpenSearchClient
-from opensearch_client.client.connection import create_opensearch_connection
-from opensearch_client.base_settings import get_settings
+from my_opensearch_client.client.client import OpenSearchClient
+from my_opensearch_client.client.connection import create_opensearch_connection
+from my_opensearch_client.endpoint.base_settings import get_opensearch_settings
 
 
 @asynccontextmanager
@@ -18,7 +18,7 @@ async def opensearch_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     Параметры подключения берутся из настроек (base_settings.py).
     """
-    settings = get_settings()
+    settings = get_opensearch_settings()
 
     # Создаём соединение
     connection: AsyncOpenSearch = create_opensearch_connection(

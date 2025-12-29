@@ -2,9 +2,9 @@ from typing import Any, Optional
 from fastapi import APIRouter, Request, HTTPException, Depends
 from opensearchpy.exceptions import NotFoundError
 
-from opensearch_client.client.client import OpenSearchClient
-from opensearch_client.lifespan import opensearch_lifespan
-from opensearch_client.entities import (
+from my_opensearch_client.client.client import OpenSearchClient
+from my_opensearch_client.endpoint.lifespan import opensearch_lifespan
+from my_opensearch_client.endpoint.entities import (
     IndexDocumentRequest,
     BulkIndexRequest,
     GetDocumentRequest,
@@ -15,7 +15,9 @@ from opensearch_client.entities import (
 )
 
 
-router = APIRouter(prefix="/opensearch", tags=["opensearch"], lifespan=opensearch_lifespan)
+opensearch_router = APIRouter(
+    prefix="/opensearch", tags=["opensearch"], lifespan=opensearch_lifespan
+)
 
 
 def get_opensearch_client(request: Request) -> OpenSearchClient:
@@ -36,7 +38,7 @@ def get_opensearch_client(request: Request) -> OpenSearchClient:
 
 
 # Эндпоинты
-@router.get("/ping")
+@opensearch_router.get("/ping")
 async def ping(
     client: OpenSearchClient = Depends(get_opensearch_client),
 ) -> dict[str, bool]:
@@ -45,7 +47,7 @@ async def ping(
     return {"available": is_available}
 
 
-@router.get("/info")
+@opensearch_router.get("/info")
 async def info(
     client: OpenSearchClient = Depends(get_opensearch_client),
 ) -> dict[str, Any]:
@@ -53,7 +55,7 @@ async def info(
     return await client.info()
 
 
-@router.get("/indices")
+@opensearch_router.get("/indices")
 async def list_indices(
     pattern: str = "*",
     client: OpenSearchClient = Depends(get_opensearch_client),
@@ -62,7 +64,7 @@ async def list_indices(
     return await client.list_indices(pattern=pattern)
 
 
-@router.post("/indices/{index_name}/exists")
+@opensearch_router.post("/indices/{index_name}/exists")
 async def index_exists(
     index_name: str,
     client: OpenSearchClient = Depends(get_opensearch_client),
@@ -72,7 +74,7 @@ async def index_exists(
     return {"exists": exists}
 
 
-@router.post("/indices/{index_name}/create")
+@opensearch_router.post("/indices/{index_name}/create")
 async def create_index(
     index_name: str,
     mappings: dict[str, Any],
@@ -89,7 +91,7 @@ async def create_index(
     )
 
 
-@router.delete("/indices/{index_name}")
+@opensearch_router.delete("/indices/{index_name}")
 async def delete_index(
     index_name: str,
     client: OpenSearchClient = Depends(get_opensearch_client),
@@ -104,7 +106,7 @@ async def delete_index(
         )
 
 
-@router.post("/documents/index")
+@opensearch_router.post("/documents/index")
 async def index_document(
     request: IndexDocumentRequest,
     client: OpenSearchClient = Depends(get_opensearch_client),
@@ -118,7 +120,7 @@ async def index_document(
     )
 
 
-@router.post("/documents/bulk-index")
+@opensearch_router.post("/documents/bulk-index")
 async def bulk_index_documents(
     request: BulkIndexRequest,
     client: OpenSearchClient = Depends(get_opensearch_client),
@@ -132,7 +134,7 @@ async def bulk_index_documents(
     )
 
 
-@router.post("/documents/get")
+@opensearch_router.post("/documents/get")
 async def get_document(
     request: GetDocumentRequest,
     client: OpenSearchClient = Depends(get_opensearch_client),
@@ -147,7 +149,7 @@ async def get_document(
     return {"document": document}
 
 
-@router.post("/documents/bulk-get")
+@opensearch_router.post("/documents/bulk-get")
 async def get_documents(
     request: GetDocumentsRequest,
     client: OpenSearchClient = Depends(get_opensearch_client),
@@ -159,7 +161,7 @@ async def get_documents(
     )
 
 
-@router.post("/search/vector")
+@opensearch_router.post("/search/vector")
 async def vector_search(
     request: VectorSearchRequest,
     client: OpenSearchClient = Depends(get_opensearch_client),
@@ -174,7 +176,7 @@ async def vector_search(
     )
 
 
-@router.post("/search/bm25")
+@opensearch_router.post("/search/bm25")
 async def bm25_search(
     request: BM25SearchRequest,
     client: OpenSearchClient = Depends(get_opensearch_client),
@@ -189,7 +191,7 @@ async def bm25_search(
     )
 
 
-@router.post("/search/hybrid")
+@opensearch_router.post("/search/hybrid")
 async def hybrid_search(
     request: HybridSearchRequest,
     client: OpenSearchClient = Depends(get_opensearch_client),
@@ -206,4 +208,3 @@ async def hybrid_search(
         text_weight=request.text_weight,
         filter=request.filter,
     )
-

@@ -9,9 +9,12 @@ opensearch/
 ├── client/              # Клиент для работы с OpenSearch
 │   ├── client.py       # Основные методы работы с OpenSearch
 │   └── connection.py    # Создание соединения
-├── entities.py          # Модели данных для API запросов
-├── routes.py            # FastAPI роуты
-├── lifespan.py          # Управление жизненным циклом приложения
+├── endpoint/           # FastAPI эндпоинты и связанные компоненты
+│   ├── routes.py       # FastAPI роуты
+│   ├── lifespan.py     # Управление жизненным циклом приложения
+│   ├── entities.py     # Модели данных для API запросов
+│   ├── base_settings.py # Настройки приложения
+│   └── __init__.py     # Экспорт основных компонентов
 ├── pyproject.toml       # Конфигурация проекта и зависимости
 ├── uv.lock              # Файл блокировки версий зависимостей (uv)
 ├── test_app/           # Тестовое приложение
@@ -129,30 +132,20 @@ uv run pytest tests/test_routes.py -m integration -v
 ### Импорт модуля
 
 ```python
-from opensearch.client import OpenSearchClient, create_opensearch_connection
-from opensearch.routes import router
-from opensearch.lifespan import opensearch_lifespan
+from opensearch_client.client import OpenSearchClient, create_opensearch_connection
+from opensearch_client.endpoint import router, opensearch_lifespan
+# Или отдельно:
+# from opensearch_client.endpoint.routes import router
+# from opensearch_client.endpoint.lifespan import opensearch_lifespan
 ```
 
 ### Настройка FastAPI приложения
 
 ```python
 from fastapi import FastAPI
-from contextlib import asynccontextmanager
-from opensearch.lifespan import opensearch_lifespan
-from opensearch.routes import router
+from opensearch_client.endpoint import router, opensearch_lifespan
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    async with opensearch_lifespan(
-        app=app,
-        hosts=["http://localhost:9200"],
-        username=None,
-        password=None,
-    ):
-        yield
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=opensearch_lifespan)
 app.include_router(router)
 ```
 
