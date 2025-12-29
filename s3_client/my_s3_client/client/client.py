@@ -422,7 +422,7 @@ class S3Client:
         """
         s3_root = self._s3_root
         if not s3_root:
-            from s3_client.base_settings import get_settings
+            from my_s3_client.endpoint.base_settings import get_settings
             settings = get_settings()
             s3_root = settings.s3_root or ""
         return "/".join([s3_root, *(p.strip("/") for p in paths)]) if s3_root else "/".join(p.strip("/") for p in paths)

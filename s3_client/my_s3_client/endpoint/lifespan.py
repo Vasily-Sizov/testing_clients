@@ -3,9 +3,9 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from aioboto3 import Session
 
-from s3_client.client.client import S3Client
-from s3_client.client.connection import create_s3_client
-from s3_client.base_settings import get_settings
+from my_s3_client.client.client import S3Client
+from my_s3_client.client.connection import create_s3_client
+from my_s3_client.endpoint.base_settings import get_settings
 
 
 @asynccontextmanager

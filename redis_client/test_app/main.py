@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from routes import router
+from my_redis_client.endpoint.routes import redis_router
 
 app = FastAPI(
     title="Redis Test App",
@@ -8,4 +8,4 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app.include_router(router)
+app.include_router(redis_router)

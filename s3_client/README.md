@@ -5,17 +5,23 @@
 ## Структура проекта
 
 ```
-s3/
-├── client/              # Клиент для работы с S3
-│   ├── client.py       # Основные методы работы с объектами
-│   └── connection.py    # Создание соединения
-├── entities.py          # Модели данных для API запросов
-├── routes.py            # FastAPI роуты
-├── lifespan.py          # Управление жизненным циклом приложения
-├── pyproject.toml       # Конфигурация проекта и зависимости
-└── tests/              # Тесты
-    ├── test_routes.py   # Интеграционные тесты
-    └── conftest.py      # Общие фикстуры для тестов
+s3_client/
+├── my_s3_client/        # Основной модуль
+│   ├── client/         # Клиент для работы с S3
+│   │   ├── client.py  # Основные методы работы с объектами
+│   │   ├── connection.py  # Создание соединения
+│   │   └── utils.py   # Утилиты
+│   └── endpoint/      # FastAPI эндпоинты
+│       ├── routes.py  # FastAPI роуты
+│       ├── lifespan.py  # Управление жизненным циклом приложения
+│       ├── entities.py  # Модели данных для API запросов
+│       └── base_settings.py  # Настройки приложения
+├── test_app/          # Тестовое приложение
+│   └── main.py        # Точка входа тестового приложения
+├── tests/             # Тесты
+│   ├── test_routes.py # Интеграционные тесты
+│   └── conftest.py    # Общие фикстуры для тестов
+└── pyproject.toml     # Конфигурация проекта и зависимости
 ```
 
 ## Требования
@@ -162,33 +168,23 @@ AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin AWS_REGION=us-east
 ### Импорт модуля
 
 ```python
-from s3.client import S3Client, create_s3_client
-from s3.routes import router
-from s3.lifespan import s3_lifespan
+from my_s3_client.client import S3Client, create_s3_client
+from my_s3_client.endpoint.routes import s3_router
+from my_s3_client.endpoint.lifespan import s3_lifespan
 ```
 
 ### Настройка FastAPI приложения
 
 ```python
 from fastapi import FastAPI
-from contextlib import asynccontextmanager
-from s3.lifespan import s3_lifespan
-from s3.routes import router
+from my_s3_client.endpoint.lifespan import s3_lifespan
+from my_s3_client.endpoint.routes import s3_router
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    async with s3_lifespan(
-        app=app,
-        aws_access_key_id="your_key",
-        aws_secret_access_key="your_secret",
-        region_name="us-east-1",
-        endpoint_url="http://localhost:9000",  # для MinIO
-    ):
-        yield
-
-app = FastAPI(lifespan=lifespan)
-app.include_router(router)
+app = FastAPI(lifespan=s3_lifespan)
+app.include_router(s3_router)
 ```
+
+Настройки подключения к S3 загружаются автоматически из переменных окружения (см. раздел "Настройка переменных окружения").
 
 ## API эндпоинты
 
@@ -236,7 +232,7 @@ app.include_router(router)
 ### Примеры использования
 
 ```python
-from s3.client import S3Client, create_s3_client
+from my_s3_client.client import S3Client, create_s3_client
 
 # Создание сессии
 session = create_s3_client(
@@ -244,7 +240,12 @@ session = create_s3_client(
     aws_secret_access_key="your_secret",
     endpoint_url="http://localhost:9000",  # для MinIO
 )
-client = S3Client(session, endpoint_url="http://localhost:9000")
+client = S3Client(
+    session=session,
+    endpoint_url="http://localhost:9000",
+    use_ssl=False,
+    verify=False,
+)
 
 # Загрузка объекта
 await client.upload_object(
@@ -255,13 +256,22 @@ await client.upload_object(
 )
 
 # Скачивание объекта
-data = await client.download_object("my-bucket", "path/to/file.txt")
+data = await client.download_object(
+    bucket_name="my-bucket",
+    object_key="path/to/file.txt",
+)
 
 # Список объектов
-objects = await client.list_objects("my-bucket", prefix="path/")
+objects = await client.list_objects(
+    bucket_name="my-bucket",
+    prefix="path/",
+)
 
 # Удаление объекта
-await client.delete_object("my-bucket", "path/to/file.txt")
+await client.delete_object(
+    bucket_name="my-bucket",
+    object_key="path/to/file.txt",
+)
 ```
 
 ## Управление зависимостями

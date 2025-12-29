@@ -13,8 +13,8 @@ import pytest
 from pathlib import Path
 from httpx import AsyncClient
 
-from s3_client.client import S3Client
-from s3_client.client.utils import sync_dir
+from my_s3_client.client import S3Client
+from my_s3_client.client.utils import sync_dir
 
 
 # ============================================================================

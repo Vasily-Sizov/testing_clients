@@ -3,7 +3,7 @@
 """
 import os
 import logging
-from s3_client.client.client import S3Client
+from my_s3_client.client.client import S3Client
 
 logger = logging.getLogger(__name__)
 

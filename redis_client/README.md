@@ -6,18 +6,22 @@
 
 ```
 redis_client/
-├── client/              # Клиент для работы с Redis
-│   ├── client.py       # Основные методы работы с очередями
-│   └── connection.py    # Создание соединения
-├── entities.py          # Модели данных для API запросов
-├── routes.py            # FastAPI роуты
-├── lifespan.py          # Управление жизненным циклом приложения
+├── my_redis_client/     # Основной пакет
+│   ├── client/          # Клиент для работы с Redis
+│   │   ├── client.py   # Основные методы работы с очередями
+│   │   └── connection.py # Создание соединения
+│   └── endpoint/        # FastAPI эндпоинты
+│       ├── routes.py    # FastAPI роуты
+│       ├── lifespan.py # Управление жизненным циклом приложения
+│       ├── entities.py  # Модели данных для API запросов
+│       └── base_settings.py # Настройки подключения
 ├── test_app/            # Тестовое приложение
 │   └── main.py          # FastAPI приложение для тестирования
+├── tests/               # Тесты
+│   ├── test_routes.py   # Интеграционные тесты
+│   └── conftest.py      # Общие фикстуры для тестов
 ├── pyproject.toml       # Конфигурация проекта и зависимости
-└── tests/              # Тесты
-    ├── test_routes.py   # Интеграционные тесты
-    └── conftest.py      # Общие фикстуры для тестов
+└── README.md
 ```
 
 ## Требования
@@ -99,11 +103,13 @@ uv sync --extra test
 
 Все тесты являются интеграционными и требуют запущенный Redis сервер.
 
+**Важно:** Тесты запускаются **локально** на вашей машине, но подключаются к Redis, который должен быть запущен (например, в контейнере). Тесты создают своё собственное FastAPI приложение через фикстуры и **не используют** контейнер `test-app` (который нужен только для демонстрации).
+
 ```bash
-# Запустите Redis (например, через docker-compose)
+# Запустите только Redis (например, через docker-compose)
 docker-compose up redis -d
 
-# Настройте переменные окружения
+# Настройте переменные окружения для тестов
 # Windows (cmd)
 set REDIS_HOST=localhost
 set REDIS_PORT=6379
@@ -112,44 +118,43 @@ set REDIS_PORT=6379
 export REDIS_HOST=localhost
 export REDIS_PORT=6379
 
-# Запустите все интеграционные тесты
+# Запустите все интеграционные тесты локально
 uv run python -m pytest tests/ -m integration -v
 ```
+
+**Как это работает:**
+- Redis запущен в контейнере и доступен на `localhost:6379` (порт проброшен)
+- Тесты запускаются локально через `pytest`
+- Тесты создают своё FastAPI приложение через фикстуру `integration_app` в `conftest.py`
+- Тесты подключаются к Redis на `localhost:6379` (который работает в контейнере)
+- Контейнер `test-app` используется только для демонстрации работы API, тесты его не используют
 
 ## Использование в проекте
 
 ### Импорт модуля
 
 ```python
-from client.client import RedisClient
-from client.connection import create_redis_connection
-from routes import router
-from lifespan import setup_redis_for_router
+from my_redis_client.client.client import RedisClient
+from my_redis_client.client.connection import create_redis_connection
+from my_redis_client.endpoint.routes import redis_router
+from my_redis_client.endpoint.lifespan import redis_lifespan
+from my_redis_client.endpoint.base_settings import RedisSettings, get_settings
 ```
 
 ### Настройка FastAPI приложения
 
 ```python
 from fastapi import FastAPI
-from lifespan import setup_redis_for_router
-from routes import router
+from my_redis_client.endpoint.routes import redis_router
 
 app = FastAPI()
 
-# Подключаем роутер с автоматической настройкой Redis
-# Lifespan для Redis будет автоматически настроен при подключении роута
-setup_redis_for_router(
-    app=app,
-    router=router,
-    host="localhost",
-    port=6379,
-    db=0,
-    password=None,
-)
+# Подключаем роутер
+# Lifespan для Redis автоматически настроен в роутере через redis_lifespan
+app.include_router(redis_router)
 ```
 
-**Важно:** Используйте `setup_redis_for_router()` вместо `app.include_router(router)`. 
-Эта функция автоматически настраивает lifespan для Redis соединения при подключении роута.
+**Важно:** Роутер `redis_router` уже содержит настроенный `lifespan`, который автоматически создаёт и управляет соединением с Redis при старте приложения. Настройки подключения берутся из переменных окружения (префикс `REDIS_`) или из файла `.env`.
 
 ## API эндпоинты
 
@@ -187,8 +192,8 @@ setup_redis_for_router(
 ### Примеры использования
 
 ```python
-from client.client import RedisClient
-from client.connection import create_redis_connection
+from my_redis_client.client.client import RedisClient
+from my_redis_client.client.connection import create_redis_connection
 
 # Создание соединения
 connection = create_redis_connection(host="localhost", port=6379)

@@ -1,20 +1,20 @@
 from typing import Any, Optional
-from fastapi import APIRouter, Request, HTTPException, Depends
 
-from client.client import RedisClient
-from lifespan import redis_lifespan
-from entities import (
-    QueuePushRequest,
-    QueuePopRequest,
+from fastapi import APIRouter, Depends, HTTPException, Request
+
+from my_redis_client.client.client import RedisClient
+from my_redis_client.endpoint.entities import (
     QueueBlockingPopRequest,
-    QueuePeekRequest,
-    QueueSizeRequest,
     QueueClearRequest,
     QueueExistsRequest,
+    QueuePeekRequest,
+    QueuePopRequest,
+    QueuePushRequest,
+    QueueSizeRequest,
 )
+from my_redis_client.endpoint.lifespan import redis_lifespan
 
-
-router = APIRouter(prefix="/redis", tags=["redis"], lifespan=redis_lifespan)
+redis_router = APIRouter(prefix="/redis", tags=["redis"], lifespan=redis_lifespan)
 
 
 def get_redis_client(request: Request) -> RedisClient:
@@ -35,7 +35,7 @@ def get_redis_client(request: Request) -> RedisClient:
 
 
 # Эндпоинты
-@router.get("/ping")
+@redis_router.get("/ping")
 async def ping(
     client: RedisClient = Depends(get_redis_client),
 ) -> dict[str, bool]:
@@ -44,7 +44,7 @@ async def ping(
     return {"available": is_available}
 
 
-@router.get("/info")
+@redis_router.get("/info")
 async def info(
     section: Optional[str] = None,
     client: RedisClient = Depends(get_redis_client),
@@ -53,7 +53,7 @@ async def info(
     return await client.info(section=section)
 
 
-@router.get("/queues")
+@redis_router.get("/queues")
 async def list_queues(
     pattern: str = "*",
     client: RedisClient = Depends(get_redis_client),
@@ -66,7 +66,8 @@ async def list_queues(
 # Эндпоинты для работы с очередями
 # ========================================================================
 
-@router.post("/queues/push")
+
+@redis_router.post("/queues/push")
 async def queue_push(
     request: QueuePushRequest,
     client: RedisClient = Depends(get_redis_client),
@@ -84,7 +85,7 @@ async def queue_push(
     }
 
 
-@router.post("/queues/pop")
+@redis_router.post("/queues/pop")
 async def queue_pop(
     request: QueuePopRequest,
     client: RedisClient = Depends(get_redis_client),
@@ -107,7 +108,7 @@ async def queue_pop(
     }
 
 
-@router.post("/queues/blocking-pop")
+@redis_router.post("/queues/blocking-pop")
 async def queue_blocking_pop(
     request: QueueBlockingPopRequest,
     client: RedisClient = Depends(get_redis_client),
@@ -132,7 +133,7 @@ async def queue_blocking_pop(
     }
 
 
-@router.post("/queues/peek")
+@redis_router.post("/queues/peek")
 async def queue_peek(
     request: QueuePeekRequest,
     client: RedisClient = Depends(get_redis_client),
@@ -151,7 +152,7 @@ async def queue_peek(
     }
 
 
-@router.post("/queues/size")
+@redis_router.post("/queues/size")
 async def queue_size(
     request: QueueSizeRequest,
     client: RedisClient = Depends(get_redis_client),
@@ -164,7 +165,7 @@ async def queue_size(
     }
 
 
-@router.post("/queues/clear")
+@redis_router.post("/queues/clear")
 async def queue_clear(
     request: QueueClearRequest,
     client: RedisClient = Depends(get_redis_client),
@@ -183,7 +184,7 @@ async def queue_clear(
         }
 
 
-@router.post("/queues/exists")
+@redis_router.post("/queues/exists")
 async def queue_exists(
     request: QueueExistsRequest,
     client: RedisClient = Depends(get_redis_client),

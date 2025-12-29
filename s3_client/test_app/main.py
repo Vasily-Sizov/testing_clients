@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from routes import router
+from my_s3_client.endpoint.routes import s3_router
 
 app = FastAPI(
     title="S3 Test App",
@@ -8,5 +8,4 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app.include_router(router)
-
+app.include_router(s3_router)

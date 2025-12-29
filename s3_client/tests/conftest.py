@@ -5,7 +5,7 @@ import os
 import pytest
 from aioboto3 import Session
 
-from s3_client.client import S3Client, create_s3_client
+from my_s3_client.client import S3Client, create_s3_client
 
 
 @pytest.fixture(scope="module")
@@ -112,11 +112,11 @@ def integration_app(s3_session: Session):
     Создаёт FastAPI приложение для интеграционных тестов API.
     """
     from fastapi import FastAPI
-    from s3_client.routes import router
-    from s3_client.client import S3Client
+    from my_s3_client.endpoint.routes import s3_router
+    from my_s3_client.client import S3Client
 
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(s3_router)
 
     # Инициализируем клиент напрямую
     # По умолчанию для MinIO используем http (без SSL)

@@ -10,7 +10,7 @@ import pytest
 from httpx import AsyncClient
 from redis.asyncio import Redis
 
-from client.client import RedisClient
+from my_redis_client.client.client import RedisClient
 
 
 # ============================================================================

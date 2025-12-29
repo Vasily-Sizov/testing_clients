@@ -3,12 +3,14 @@
 
 Использует pydantic BaseSettings для загрузки настроек из переменных окружения.
 """
+
 from functools import lru_cache
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):
+class S3Settings(BaseSettings):
     """Настройки подключения к S3."""
 
     access_key_id: str | None = Field(
@@ -56,14 +58,13 @@ class Settings(BaseSettings):
 
 
 @lru_cache()
-def get_settings() -> Settings:
+def get_settings() -> S3Settings:
     """
     Получить настройки приложения.
 
     Использует @lru_cache для кэширования - настройки загружаются один раз
     и переиспользуются при последующих вызовах.
 
-    :return: экземпляр Settings
+    :return: экземпляр S3Settings
     """
-    return Settings()
-
+    return S3Settings()

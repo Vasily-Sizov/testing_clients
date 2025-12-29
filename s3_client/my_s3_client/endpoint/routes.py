@@ -1,24 +1,24 @@
-from typing import Any
-from fastapi import APIRouter, Request, HTTPException, Depends, Response
 import base64
+from typing import Any
 
-from s3_client.client.client import S3Client
-from s3_client.lifespan import s3_lifespan
-from s3_client.entities import (
-    UploadObjectRequest,
-    DownloadObjectRequest,
-    DeleteObjectRequest,
-    ObjectExistsRequest,
-    ListObjectsRequest,
-    GetObjectMetadataRequest,
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+
+from my_s3_client.client.client import S3Client
+from my_s3_client.endpoint.entities import (
     CopyObjectRequest,
-    GeneratePresignedUrlRequest,
     CreateBucketRequest,
     DeleteBucketRequest,
+    DeleteObjectRequest,
+    DownloadObjectRequest,
+    GeneratePresignedUrlRequest,
+    GetObjectMetadataRequest,
+    ListObjectsRequest,
+    ObjectExistsRequest,
+    UploadObjectRequest,
 )
+from my_s3_client.endpoint.lifespan import s3_lifespan
 
-
-router = APIRouter(prefix="/s3", tags=["s3"], lifespan=s3_lifespan)
+s3_router = APIRouter(prefix="/s3", tags=["s3"], lifespan=s3_lifespan)
 
 
 def get_s3_client(request: Request) -> S3Client:
@@ -39,7 +39,7 @@ def get_s3_client(request: Request) -> S3Client:
 
 
 # Эндпоинты
-@router.get("/ping")
+@s3_router.get("/ping")
 async def ping(
     client: S3Client = Depends(get_s3_client),
 ) -> dict[str, bool]:
@@ -48,7 +48,7 @@ async def ping(
     return {"available": is_available}
 
 
-@router.get("/buckets")
+@s3_router.get("/buckets")
 async def list_buckets(
     client: S3Client = Depends(get_s3_client),
 ) -> list[dict[str, str]]:
@@ -56,7 +56,7 @@ async def list_buckets(
     return await client.list_buckets()
 
 
-@router.post("/buckets/exists")
+@s3_router.post("/buckets/exists")
 async def bucket_exists(
     bucket_name: str,
     client: S3Client = Depends(get_s3_client),
@@ -66,7 +66,7 @@ async def bucket_exists(
     return {"bucket_name": bucket_name, "exists": exists}
 
 
-@router.post("/buckets/create")
+@s3_router.post("/buckets/create")
 async def create_bucket(
     request: CreateBucketRequest,
     client: S3Client = Depends(get_s3_client),
@@ -78,7 +78,7 @@ async def create_bucket(
     )
 
 
-@router.post("/buckets/delete")
+@s3_router.post("/buckets/delete")
 async def delete_bucket(
     request: DeleteBucketRequest,
     client: S3Client = Depends(get_s3_client),
@@ -91,7 +91,8 @@ async def delete_bucket(
 # Эндпоинты для работы с объектами
 # ========================================================================
 
-@router.post("/objects/upload")
+
+@s3_router.post("/objects/upload")
 async def upload_object(
     request: UploadObjectRequest,
     client: S3Client = Depends(get_s3_client),
@@ -115,7 +116,7 @@ async def upload_object(
     )
 
 
-@router.post("/objects/download")
+@s3_router.post("/objects/download")
 async def download_object(
     request: DownloadObjectRequest,
     client: S3Client = Depends(get_s3_client),
@@ -141,7 +142,7 @@ async def download_object(
     )
 
 
-@router.post("/objects/delete")
+@s3_router.post("/objects/delete")
 async def delete_object(
     request: DeleteObjectRequest,
     client: S3Client = Depends(get_s3_client),
@@ -153,7 +154,7 @@ async def delete_object(
     )
 
 
-@router.post("/objects/exists")
+@s3_router.post("/objects/exists")
 async def object_exists(
     request: ObjectExistsRequest,
     client: S3Client = Depends(get_s3_client),
@@ -170,7 +171,7 @@ async def object_exists(
     }
 
 
-@router.post("/objects/list")
+@s3_router.post("/objects/list")
 async def list_objects(
     request: ListObjectsRequest,
     client: S3Client = Depends(get_s3_client),
@@ -189,7 +190,7 @@ async def list_objects(
     }
 
 
-@router.post("/objects/metadata")
+@s3_router.post("/objects/metadata")
 async def get_object_metadata(
     request: GetObjectMetadataRequest,
     client: S3Client = Depends(get_s3_client),
@@ -207,7 +208,7 @@ async def get_object_metadata(
         )
 
 
-@router.post("/objects/copy")
+@s3_router.post("/objects/copy")
 async def copy_object(
     request: CopyObjectRequest,
     client: S3Client = Depends(get_s3_client),
@@ -221,7 +222,7 @@ async def copy_object(
     )
 
 
-@router.post("/objects/presigned-url")
+@s3_router.post("/objects/presigned-url")
 async def generate_presigned_url(
     request: GeneratePresignedUrlRequest,
     client: S3Client = Depends(get_s3_client),
@@ -239,4 +240,3 @@ async def generate_presigned_url(
         "url": url,
         "expiration": request.expiration,
     }
-
