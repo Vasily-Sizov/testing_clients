@@ -1,0 +1,33 @@
+services:
+  artemis:
+    image: vromero/activemq-artemis:latest
+    container_name: artemis
+    environment:
+      ARTEMIS_USERNAME: artemis
+      ARTEMIS_PASSWORD: artemis
+      ARTEMIS_CREATE_QUEUES: "chat.in;email.in;index.in;chat.out;email.out;index.out"
+    ports:
+      - "61616:61616"   # AMQP
+      - "8161:8161"     # веб-консоль
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 61616 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  test-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: artemis-test-app
+    environment:
+      - ARTEMIS_HOST=artemis
+      - ARTEMIS_PORT=61616
+      - ARTEMIS_USERNAME=artemis
+      - ARTEMIS_PASSWORD=artemis
+    ports:
+      - "8000:8000"
+    depends_on:
+      artemis:
+        condition: service_healthy

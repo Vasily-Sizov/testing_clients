@@ -1,0 +1,27 @@
+[project]
+name = "artemis-client"
+version = "1.0.0"
+description = "Переиспользуемый клиент для работы с Artemis очередями"
+requires-python = ">=3.11"
+dependencies = [
+    "python-qpid-proton>=0.38.0",
+    "fastapi==0.125.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest==7.4.3", "pytest-asyncio==0.21.1", "httpx==0.25.2"]
+
+[tool.uv.sources]
+# Локальные источники пакетов (если нужно)
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: Integration tests with real Artemis (require running server)",
+]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+

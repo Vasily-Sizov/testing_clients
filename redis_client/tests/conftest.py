@@ -2,12 +2,17 @@
 Общие фикстуры для тестов Redis.
 """
 
+import asyncio
+
+import httpx
 import pytest
+from fastapi import FastAPI
 from redis.asyncio import Redis
 
 from my_redis_client.client.client import RedisClient
 from my_redis_client.client.connection import create_redis_connection
 from my_redis_client.endpoint.base_settings import get_settings
+from my_redis_client.endpoint.routes import redis_router
 
 
 @pytest.fixture(scope="module")
@@ -15,8 +20,6 @@ def event_loop():
     """
     Создаёт event loop для модуля тестов.
     """
-    import asyncio
-
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
@@ -66,11 +69,6 @@ def integration_app(redis_connection: Redis):
     """
     Создаёт FastAPI приложение для интеграционных тестов API.
     """
-    from fastapi import FastAPI
-
-    from my_redis_client.client.client import RedisClient
-    from my_redis_client.endpoint.routes import redis_router
-
     app = FastAPI()
     app.include_router(redis_router)
 
@@ -87,8 +85,6 @@ async def integration_test_client(integration_app):
     """
     Создаёт httpx.AsyncClient для интеграционных тестов API.
     """
-    import httpx
-
     async with httpx.AsyncClient(app=integration_app, base_url="http://test") as client:
         yield client
 

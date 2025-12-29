@@ -1,11 +1,15 @@
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+
 from fastapi import FastAPI
 from redis.asyncio import Redis
 
 from my_redis_client.client.client import RedisClient
 from my_redis_client.client.connection import create_redis_connection
 from my_redis_client.endpoint.base_settings import get_settings
+
+logger = logging.getLogger("uvicorn")
 
 
 @asynccontextmanager
@@ -18,9 +22,6 @@ async def redis_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     Параметры подключения берутся из настроек (base_settings.py).
     """
-    import logging
-    logger = logging.getLogger("uvicorn")
-    
     logger.info("Redis lifespan: Starting initialization...")
     settings = get_settings()
     logger.info(f"Redis lifespan: Connecting to {settings.host}:{settings.port}")

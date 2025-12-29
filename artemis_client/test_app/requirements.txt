@@ -1,0 +1,6 @@
+fastapi>=0.125.0
+uvicorn[standard]>=0.24.0
+python-qpid-proton>=0.38.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+

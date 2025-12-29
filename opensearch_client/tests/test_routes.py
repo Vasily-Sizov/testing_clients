@@ -6,6 +6,7 @@
 1. Работу клиента OpenSearchClient напрямую
 2. Работу API роутов через HTTP
 """
+import asyncio
 import pytest
 from httpx import AsyncClient
 from opensearchpy import AsyncOpenSearch
@@ -514,7 +515,6 @@ class TestBM25Search:
         )
 
         # Небольшая задержка для индексации
-        import asyncio
         await asyncio.sleep(0.1)
         
         response = await integration_test_client.post(

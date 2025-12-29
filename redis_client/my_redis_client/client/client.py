@@ -4,7 +4,9 @@
 Содержит только методы работы с Redis очередями.
 Не управляет соединением и не знает о lifecycle приложения.
 """
+import json
 from typing import Optional, Any, Union
+
 from redis.asyncio import Redis
 
 
@@ -87,8 +89,6 @@ class RedisClient:
         :param side: сторона добавления - "left" (LPUSH) или "right" (RPUSH)
         :return: новый размер очереди после добавления
         """
-        import json
-
         # Преобразуем сообщение в строку для хранения
         if isinstance(message, (dict, list)):
             message_str = json.dumps(message)

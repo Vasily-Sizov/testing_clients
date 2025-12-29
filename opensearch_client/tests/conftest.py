@@ -1,3 +1,4 @@
+import asyncio
 import os
 from unittest.mock import AsyncMock
 import pytest
@@ -41,7 +42,6 @@ def client(app: FastAPI) -> TestClient:
 @pytest.fixture(scope="module")
 def event_loop():
     """Создаёт event loop с module scope для async фикстур."""
-    import asyncio
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
     yield loop
@@ -55,7 +55,6 @@ async def opensearch_connection(event_loop) -> AsyncOpenSearch:
     
     Использует переменные окружения или значения по умолчанию.
     """
-    import asyncio
     # Устанавливаем event loop
     asyncio.set_event_loop(event_loop)
     
@@ -78,7 +77,6 @@ async def opensearch_connection(event_loop) -> AsyncOpenSearch:
 @pytest.fixture(scope="module")
 async def integration_client(opensearch_connection: AsyncOpenSearch, event_loop) -> OpenSearchClient:
     """Создаёт реальный OpenSearchClient для интеграционных тестов API."""
-    import asyncio
     asyncio.set_event_loop(event_loop)
     return OpenSearchClient(opensearch_connection)
 
@@ -86,7 +84,6 @@ async def integration_client(opensearch_connection: AsyncOpenSearch, event_loop)
 @pytest.fixture(scope="module")
 async def client(opensearch_connection: AsyncOpenSearch, event_loop) -> OpenSearchClient:
     """Создаёт клиент с реальным соединением для test_integration.py."""
-    import asyncio
     asyncio.set_event_loop(event_loop)
     return OpenSearchClient(opensearch_connection)
 
@@ -94,7 +91,6 @@ async def client(opensearch_connection: AsyncOpenSearch, event_loop) -> OpenSear
 @pytest.fixture(scope="module")
 async def integration_app(integration_client: OpenSearchClient, event_loop) -> FastAPI:
     """Создаёт FastAPI приложение с реальным OpenSearch клиентом."""
-    import asyncio
     asyncio.set_event_loop(event_loop)
     
     app = FastAPI()
@@ -111,7 +107,6 @@ async def integration_test_client(integration_app: FastAPI, event_loop) -> Async
     Использует httpx.AsyncClient для правильной работы с async приложением.
     TestClient не подходит, так как создает свой event loop.
     """
-    import asyncio
     asyncio.set_event_loop(event_loop)
     
     async with AsyncClient(app=integration_app, base_url="http://test") as client:

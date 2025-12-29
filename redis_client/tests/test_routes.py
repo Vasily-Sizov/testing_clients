@@ -6,6 +6,9 @@
 1. Работу клиента RedisClient напрямую
 2. Работу API роутов через HTTP
 """
+import asyncio
+import json
+
 import pytest
 from httpx import AsyncClient
 from redis.asyncio import Redis
@@ -182,7 +185,6 @@ class TestQueueBlockingPop:
     ) -> None:
         """Тест успешного блокирующего извлечения."""
         # Добавляем сообщение в отдельной задаче
-        import asyncio
         async def add_message():
             await asyncio.sleep(0.1)
             await integration_test_client.post(
@@ -432,7 +434,6 @@ class TestClientQueueOperations:
         await client.queue_push(test_queue, message_dict)
 
         message = await client.queue_pop(test_queue)
-        import json
         assert json.loads(message) == message_dict
 
     async def test_blocking_pop(
@@ -441,8 +442,6 @@ class TestClientQueueOperations:
         test_queue: str,
     ) -> None:
         """Тест блокирующего извлечения."""
-        import asyncio
-
         # Добавляем сообщение в отдельной задаче
         async def add_message():
             await asyncio.sleep(0.1)

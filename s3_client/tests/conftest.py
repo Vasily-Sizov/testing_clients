@@ -2,10 +2,14 @@
 Общие фикстуры для тестов S3.
 """
 import os
+import asyncio
 import pytest
+import httpx
 from aioboto3 import Session
+from fastapi import FastAPI
 
 from my_s3_client.client import S3Client, create_s3_client
+from my_s3_client.endpoint.routes import s3_router
 
 
 @pytest.fixture(scope="module")
@@ -13,7 +17,6 @@ def event_loop():
     """
     Создаёт event loop для модуля тестов.
     """
-    import asyncio
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
@@ -111,10 +114,6 @@ def integration_app(s3_session: Session):
     """
     Создаёт FastAPI приложение для интеграционных тестов API.
     """
-    from fastapi import FastAPI
-    from my_s3_client.endpoint.routes import s3_router
-    from my_s3_client.client import S3Client
-
     app = FastAPI()
     app.include_router(s3_router)
 
@@ -147,7 +146,6 @@ async def integration_test_client(integration_app):
     """
     Создаёт httpx.AsyncClient для интеграционных тестов API.
     """
-    import httpx
     async with httpx.AsyncClient(app=integration_app, base_url="http://test") as client:
         yield client
 
