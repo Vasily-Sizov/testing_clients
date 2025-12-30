@@ -6,6 +6,7 @@ def create_redis_connection(
     host: str = "localhost",
     port: int = 6379,
     db: int = 0,
+    username: Optional[str] = None,
     password: Optional[str] = None,
     decode_responses: bool = False,
     socket_timeout: Optional[float] = None,
@@ -22,6 +23,7 @@ def create_redis_connection(
     :param host: хост Redis сервера
     :param port: порт Redis сервера
     :param db: номер базы данных (0-15)
+    :param username: имя пользователя для ACL (Redis 6.0+)
     :param password: пароль для аутентификации
     :param decode_responses: декодировать ли ответы как строки (по умолчанию False - bytes)
     :param socket_timeout: таймаут для операций сокета
@@ -34,6 +36,7 @@ def create_redis_connection(
         host=host,
         port=port,
         db=db,
+        username=username,
         password=password,
         decode_responses=decode_responses,
         socket_timeout=socket_timeout,

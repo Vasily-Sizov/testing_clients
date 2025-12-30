@@ -35,10 +35,11 @@ async def redis_connection() -> Redis:
     settings = get_settings()
 
     connection = create_redis_connection(
-        host=settings.host,
-        port=settings.port,
-        db=settings.db,
-        password=settings.password,
+        host=settings.redis_host,
+        port=settings.redis_port,
+        db=settings.redis_db,
+        username=settings.redis_username,
+        password=settings.redis_password,
         decode_responses=False,  # Для тестов используем bytes
     )
 

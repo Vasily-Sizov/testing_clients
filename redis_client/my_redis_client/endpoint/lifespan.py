@@ -24,19 +24,20 @@ async def redis_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     logger.info("Redis lifespan: Starting initialization...")
     settings = get_settings()
-    logger.info(f"Redis lifespan: Connecting to {settings.host}:{settings.port}")
+    logger.info(f"Redis lifespan: Connecting to {settings.redis_host}:{settings.redis_port}")
 
     # Создаём соединение
     connection: Redis = create_redis_connection(
-        host=settings.host,
-        port=settings.port,
-        db=settings.db,
-        password=settings.password,
-        decode_responses=settings.decode_responses,
-        socket_timeout=settings.socket_timeout,
-        socket_connect_timeout=settings.socket_connect_timeout,
-        retry_on_timeout=settings.retry_on_timeout,
-        health_check_interval=settings.health_check_interval,
+        host=settings.redis_host,
+        port=settings.redis_port,
+        db=settings.redis_db,
+        username=settings.redis_username,
+        password=settings.redis_password,
+        decode_responses=settings.redis_decode_responses,
+        socket_timeout=settings.redis_socket_timeout,
+        socket_connect_timeout=settings.redis_socket_connect_timeout,
+        retry_on_timeout=settings.redis_retry_on_timeout,
+        health_check_interval=settings.redis_health_check_interval,
     )
 
     # Создаём клиент
