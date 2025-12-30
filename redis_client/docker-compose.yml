@@ -4,8 +4,14 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
+    command: >
+      redis-server
+      --requirepass masterpass123
+      --aclfile /etc/redis/users.acl
+    volumes:
+      - ./redis-users.acl:/etc/redis/users.acl:ro
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "masterpass123", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -19,7 +25,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
-      - REDIS_PASSWORD=
+      - REDIS_USERNAME=testuser
+      - REDIS_PASSWORD=testpass123
       - REDIS_DECODE_RESPONSES=false
       - REDIS_RETRY_ON_TIMEOUT=true
       - REDIS_HEALTH_CHECK_INTERVAL=30
